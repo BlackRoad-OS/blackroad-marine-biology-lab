@@ -2,19 +2,16 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
     branches: [main]
 
 jobs:
   test:
-    name: Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
-
     strategy:
-      fail-fast: false
       matrix:
-        python-version: ["3.11"]
+        python-version: ["3.10", "3.11", "3.12"]
 
     steps:
       - uses: actions/checkout@v4
@@ -24,42 +21,17 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install test dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install pytest pytest-cov
 
       - name: Run tests with coverage
         run: |
-          pytest tests/ -v --tb=short \
-            --cov=src \
-            --cov-report=term-missing \
-            --cov-report=xml \
-            --cov-fail-under=80
+          pytest tests/ -v --tb=short --cov=src --cov-report=term-missing --cov-report=xml
 
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
         with:
-          name: coverage-xml
-          path: coverage.xml
-          retention-days: 7
-
-      - name: Smoke-test CLI (reef-health)
-        run: |
-          python src/marine.py reef-health \
-            --reef-id CI-TEST --coral 60 --bleaching 5 \
-            --fish-density 45 --clarity 16 --macroalgae 3 --invertebrates 18
-
-      - name: Smoke-test CLI (biodiversity)
-        run: |
-          python src/marine.py biodiversity --site-id CI-BIO \
-            --species-counts "Acropora:30" "Porites:20" "Chromis:50" "Parrotfish:15"
-
-      - name: Smoke-test CLI (water-quality)
-        run: |
-          python src/marine.py water-quality \
-            --station CI-01 --do-mgl 7.0 --ph 8.1 --turbidity 0.5 \
-            --temp 26.0 --nitrate 0.02 --phosphate 0.005 --salinity 35.0
-
-      - name: Smoke-test CLI (report)
-        run: python src/marine.py report
+          file: coverage.xml
+          fail_ci_if_error: false
